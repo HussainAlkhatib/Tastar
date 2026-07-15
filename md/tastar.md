@@ -60,7 +60,7 @@ Before analysis, Tastar MUST check for R:
 
 &#x20;  - macOS: `brew install --cask r`
 
-&#x20;  - Linux (Debian/Ubuntu): `sudo apt-get update \&\& sudo apt-get install r-base -y`
+&#x20;  - Linux (Debian/Ubuntu): `sudo apt-get update \\\&\\\& sudo apt-get install r-base -y`
 
 &#x20;  - Linux (RHEL/Fedora): `sudo dnf install R -y`
 

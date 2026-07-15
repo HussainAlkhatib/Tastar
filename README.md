@@ -30,6 +30,8 @@ Tastar is a self-contained, cross-platform tool that installs an AI agent and sk
 
 \- Adds itself to system PATH
 
+\- \*\*Delete command\*\* to remove installed files and optionally self-destruct
+
 
 
 \## Installation
@@ -58,35 +60,43 @@ Tastar is a self-contained, cross-platform tool that installs an AI agent and sk
 
 Once installed, you can use Tastar from your AI assistant by referencing the installed agent and skill files. For example, in Kilo Code:
 
-/tastar analyze # Analyze the current project
-
-/tastar fix # Apply all fixes
-
-/tastar status # Show analysis status
-
-/tastar rollback # Rollback changes
-
-/tastar test # Run generated tests
-
-/tastar report # Generate fresh reports
 
 
+```
 
-text
+/tastar analyze          # Analyze the current project
+
+/tastar fix              # Apply all fixes
+
+/tastar status           # Show analysis status
+
+/tastar rollback         # Rollback changes
+
+/tastar test             # Run generated tests
+
+/tastar report           # Generate fresh reports
+
+```
 
 
 
 You can also run Tastar commands directly from the terminal (if added to PATH):
 
-tastar update # Check for updates and self-update
-
-tastar version # Show version
-
-tastar help # Show this help
 
 
+```
 
-text
+tastar update            # Check for updates and self-update
+
+tastar delete            # Remove installed agent and skill files
+
+tastar delete --self     # Remove everything including the executable itself
+
+tastar version           # Show version
+
+tastar help              # Show this help
+
+```
 
 
 
@@ -120,11 +130,13 @@ The analysis creates a `.tastar/` directory in your project root with:
 
 To update Tastar to the latest version, run:
 
+
+
+```
+
 tastar update
 
-
-
-text
+```
 
 
 
@@ -141,6 +153,26 @@ The tool will check GitHub releases and replace itself automatically.
 \- R (optional, for interactive visualizations)
 
 \- Git (optional, for history analysis)
+
+
+
+\## Uninstalling
+
+
+
+To completely remove Tastar, run:
+
+
+
+```
+
+tastar delete --self
+
+```
+
+
+
+This will delete the agent and skill files, remove the configuration, and create a script to delete the executable itself after the process exits (on Windows, you may need to run the generated batch file manually).
 
 
 

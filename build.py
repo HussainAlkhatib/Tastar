@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Build script for Tastar Installer executables.
+Build script for Tastar installer executables.
 Uses PyInstaller to create standalone executables for Windows, macOS, Linux.
 """
 import os

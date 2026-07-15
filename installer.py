@@ -3,6 +3,7 @@
 Tastar Installer - Self-contained executable
 Installs Tastar Agent and Skill files, and optionally adds itself to PATH.
 Supports update via GitHub releases.
+Supports delete/uninstall commands.
 """
 import os
 import sys
@@ -16,40 +17,20 @@ from pathlib import Path
 from datetime import datetime
 
 VERSION = "1.0.0"
-GITHUB_REPO = "yourusername/tastar"  # CHANGE THIS
+GITHUB_REPO = "HussainAlkhatib/Tastar"  # CHANGE THIS TO YOUR REPO
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
-# Embedded file contents (these will be bundled by PyInstaller)
-AGENT_CONTENT = """---
-name: tastar
-description: Supreme Code Architect & Autonomous Analyst.
-tools:
-  read_file: true
-  write_file: true
-  run_command: true
-  search_files: true
-  list_directory: true
----
+# These placeholders will be replaced by GitHub Actions with actual content
+AGENT_CONTENT = """{{AGENT_CONTENT}}"""
+SKILL_CONTENT = """{{SKILL_CONTENT}}"""
 
-# TASTAR AGENT - Universal Code Whisperer
-
-... (full content as provided earlier)
-"""
-
-SKILL_CONTENT = """---
-name: tastar-analyzer
-description: Universal static analysis, patch generation, rollback.
----
-
-# TASTAR SKILL - Analysis & Visualization Core
-
-... (full content)
-"""
+CONFIG_DIR = Path.home() / ".tastar"
+CONFIG_FILE = CONFIG_DIR / "install_paths.json"
 
 
 def print_header():
     print("=" * 60)
-    print(f"Tastar Installer v{VERSION}")
+    print(f"Tastar v{VERSION}")
     print("=" * 60)
     print()
 
@@ -63,7 +44,7 @@ def get_input(prompt, default=""):
         value = input(prompt).strip()
         return value if value else default
     except (EOFError, KeyboardInterrupt):
-        print("\nInstallation cancelled.")
+        print("\nOperation cancelled.")
         sys.exit(1)
 
 
@@ -72,13 +53,23 @@ def get_default_paths():
     if system == "Windows":
         agent_default = os.path.expanduser("~/.config/kilo/agents")
         skill_default = os.path.expanduser("~/.kilo/skills")
-    elif system == "Darwin":
-        agent_default = os.path.expanduser("~/.config/kilo/agents")
-        skill_default = os.path.expanduser("~/.kilo/skills")
-    else:  # Linux
+    else:  # Unix-like
         agent_default = os.path.expanduser("~/.config/kilo/agents")
         skill_default = os.path.expanduser("~/.kilo/skills")
     return agent_default, skill_default
+
+
+def save_paths(agent_path, skill_path):
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    with open(CONFIG_FILE, "w") as f:
+        json.dump({"agent_path": agent_path, "skill_path": skill_path}, f)
+
+
+def load_paths():
+    if CONFIG_FILE.exists():
+        with open(CONFIG_FILE) as f:
+            return json.load(f)
+    return None
 
 
 def install_files(agent_path, skill_path):
@@ -97,6 +88,7 @@ def install_files(agent_path, skill_path):
         f.write(SKILL_CONTENT)
     print(f"[OK] Skill installed to: {skill_file}")
 
+    save_paths(str(agent_path), str(skill_path))
     print("\n[SUCCESS] Tastar installed successfully!")
 
 
@@ -105,7 +97,6 @@ def add_to_path(executable_path):
     system = platform.system()
     bin_dir = Path(executable_path).parent.resolve()
     if system == "Windows":
-        # Use setx to add to user PATH
         current_path = os.environ.get("PATH", "")
         if str(bin_dir) not in current_path.split(os.pathsep):
             try:
@@ -121,10 +112,8 @@ def add_to_path(executable_path):
         else:
             print(f"[OK] {bin_dir} already in PATH.")
     else:
-        # Unix-like: add to ~/.profile or ~/.bashrc
         shell_rc = os.path.expanduser("~/.profile")
         if platform.system() == "Darwin":
-            # macOS might use .zshrc
             shell_rc = os.path.expanduser("~/.zshrc")
         if not os.path.exists(shell_rc):
             shell_rc = os.path.expanduser("~/.bashrc")
@@ -161,7 +150,6 @@ def main_install():
 
     install_files(agent_path, skill_path)
 
-    # Ask to add to PATH
     if get_input("Add Tastar executable to system PATH? (yes/no)", "yes").lower() in (
         "yes",
         "y",
@@ -175,6 +163,84 @@ def main_install():
     print("  /tastar fix")
     print("  /tastar status")
     print("  /tastar rollback")
+    print("\nAdditional CLI commands:")
+    print("  tastar delete          - Remove installed agent and skill files")
+    print("  tastar delete --self   - Also remove this executable")
+
+
+def cmd_delete(args):
+    """Delete installed files."""
+    paths = load_paths()
+    if not paths:
+        print("No installation record found. Run 'tastar' to install first.")
+        return
+
+    agent_path = Path(paths["agent_path"])
+    skill_path = Path(paths["skill_path"])
+
+    print("The following will be deleted:")
+    print(f"  Agent: {agent_path / 'tastar.md'}")
+    print(f"  Skill: {skill_path / 'tastar'}")
+    if "--self" in args:
+        print(f"  Executable: {sys.argv[0]} (this file)")
+
+    confirm = get_input("Are you sure? (yes/no)", "no")
+    if confirm.lower() != "yes":
+        print("Deletion cancelled.")
+        return
+
+    # Delete agent file
+    agent_file = agent_path / "tastar.md"
+    if agent_file.exists():
+        agent_file.unlink()
+        print(f"[OK] Deleted {agent_file}")
+    else:
+        print(f"[SKIP] {agent_file} not found")
+
+    # Delete skill folder
+    skill_folder = skill_path / "tastar"
+    if skill_folder.exists():
+        shutil.rmtree(skill_folder)
+        print(f"[OK] Deleted {skill_folder}")
+    else:
+        print(f"[SKIP] {skill_folder} not found")
+
+    # Delete config
+    if CONFIG_FILE.exists():
+        CONFIG_FILE.unlink()
+        print("[OK] Deleted installation record")
+        # remove config dir if empty
+        try:
+            CONFIG_DIR.rmdir()
+        except OSError:
+            pass
+
+    # Delete self if requested
+    if "--self" in args:
+        self_exe = Path(sys.argv[0]).resolve()
+        if self_exe.exists():
+            try:
+                if platform.system() == "Windows":
+                    # Cannot delete running exe; create a batch file to delete after exit
+                    bat_path = self_exe.with_suffix(".bat")
+                    with open(bat_path, "w") as f:
+                        f.write(f'@echo off\n:loop\ntimeout /t 1 /nobreak >nul\ndel "{self_exe}"\nif exist "{self_exe}" goto loop\ndel "%~f0"\n')
+                    print(f"[OK] Created {bat_path} to delete the executable after this process exits.")
+                    print("Please run that batch file manually as Administrator if needed.")
+                else:
+                    # Unix: can delete after exit using a shell script
+                    sh_path = self_exe.with_suffix(".sh")
+                    with open(sh_path, "w") as f:
+                        f.write(f'#!/bin/bash\nsleep 1\nrm -f "{self_exe}"\nrm -f "$0"\n')
+                    os.chmod(sh_path, 0o755)
+                    print(f"[OK] Created {sh_path} to delete the executable after this process exits.")
+                    print("Run that script manually (e.g., ./delete.sh) to finalize removal.")
+                print("Please also remove the directory containing this executable from your PATH if you added it.")
+            except Exception as e:
+                print(f"[ERROR] Could not create deletion script: {e}")
+                print(f"Please delete '{self_exe}' manually.")
+
+    print("\nTastar has been removed.")
 
 
 def check_for_updates():
@@ -205,7 +271,6 @@ def check_for_updates():
 def download_and_update(release):
     print("Downloading latest release...")
     for asset in release.get("assets", []):
-        # Determine appropriate asset based on platform
         system = platform.system()
         if system == "Windows" and asset["name"].endswith(".exe"):
             url = asset["browser_download_url"]
@@ -223,10 +288,8 @@ def download_and_update(release):
                     tmp.write(chunk)
                 tmp_path = tmp.name
 
-            # Replace current executable
             current_exe = Path(sys.argv[0])
             if system == "Windows":
-                # Need to rename current exe to a backup, then copy new
                 backup = current_exe.with_suffix(".exe.bak")
                 shutil.move(current_exe, backup)
                 shutil.copy2(tmp_path, current_exe)
@@ -234,7 +297,6 @@ def download_and_update(release):
                 print("[OK] Tastar updated successfully!")
                 print("The previous version was backed up as", backup)
             else:
-                # Unix: overwrite
                 shutil.copy2(tmp_path, current_exe)
                 os.chmod(current_exe, 0o755)
                 print("[OK] Tastar updated successfully!")
@@ -253,11 +315,16 @@ def main():
         if cmd == "update":
             check_for_updates()
             return
+        elif cmd == "delete":
+            cmd_delete(sys.argv[2:])
+            return
         elif cmd in ("--help", "-h", "help"):
             print("Tastar Installer and CLI")
             print("Usage: tastar [command]")
             print("Commands:")
             print("  update          Update Tastar to the latest version")
+            print("  delete          Remove installed agent and skill files")
+            print("  delete --self   Also remove the Tastar executable itself")
             print("  analyze         Run analysis (via your AI assistant)")
             print("  fix             Apply fixes (via your AI assistant)")
             print("  status          Show status (via your AI assistant)")
@@ -278,7 +345,6 @@ def main():
             print(f"Tastar v{VERSION}")
             return
         else:
-            # Delegate to the agent; for now print a message
             print(f"Command '{cmd}' is intended to be run inside your AI assistant.")
             print("Please use the appropriate agent command (e.g., /tastar {cmd})")
             return

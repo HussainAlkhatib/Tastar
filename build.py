@@ -14,9 +14,8 @@ def run_pyinstaller(platform_name, extra_args=None):
         "--add-data", f"README.md:.",
         INSTALLER_SCRIPT,
     ]
-    # Request admin elevation on Windows
     if platform_name == "win":
-        cmd.append("--uac-admin")
+        cmd.append("--uac-admin")  # Request admin elevation
     if extra_args:
         cmd.extend(extra_args)
     subprocess.run(cmd, check=True)

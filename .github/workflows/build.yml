@@ -19,21 +19,8 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Inject agent and skill content into installer.py
-        run: |
-          python -c "
-          import pathlib
-          agent = pathlib.Path('md/tastar.md').read_text(encoding='utf-8')
-          skill = pathlib.Path('md/tastar/SKILL.md').read_text(encoding='utf-8')
-          installer = pathlib.Path('installer.py').read_text(encoding='utf-8')
-          # Escape backslashes and quotes for safe embedding
-          agent_escaped = agent.replace('\\', '\\\\').replace('\"', '\\\"')
-          skill_escaped = skill.replace('\\', '\\\\').replace('\"', '\\\"')
-          installer = installer.replace('{{AGENT_CONTENT}}', agent_escaped)
-          installer = installer.replace('{{SKILL_CONTENT}}', skill_escaped)
-          pathlib.Path('installer.py').write_text(installer, encoding='utf-8')
-          "
-        shell: bash
+      - name: Inject agent and skill content
+        run: python inject.py
 
       - name: Install PyInstaller
         run: pip install pyinstaller

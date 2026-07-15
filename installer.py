@@ -20,7 +20,7 @@ VERSION = "1.0.0"
 GITHUB_REPO = "HussainAlkhatib/Tastar"  # CHANGE THIS TO YOUR REPO
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
-# These placeholders will be replaced by GitHub Actions with actual content
+# These placeholders will be replaced by inject.py
 AGENT_CONTENT = """{{AGENT_CONTENT}}"""
 SKILL_CONTENT = """{{SKILL_CONTENT}}"""
 

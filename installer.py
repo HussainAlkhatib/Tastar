@@ -1,14 +1,5 @@
 #!/usr/bin/env python3
-"""
-Tastar Installer - Self-contained executable
-Installs Tastar Agent and Skill files, and adds itself to system PATH.
-"""
-import os
-import sys
-import shutil
-import subprocess
-import json
-import platform
+import os, sys, shutil, subprocess, json, platform
 from pathlib import Path
 
 VERSION = "1.0.0"
@@ -18,9 +9,9 @@ CONFIG_DIR = Path.home() / ".tastar"
 CONFIG_FILE = CONFIG_DIR / "install_paths.json"
 
 def print_header():
-    print("=" * 60)
+    print("="*60)
     print(f"Tastar Installer v{VERSION}")
-    print("=" * 60)
+    print("="*60)
     print()
 
 def get_input(prompt, default=""):
@@ -31,19 +22,18 @@ def get_input(prompt, default=""):
             prompt = f"{prompt}: "
         value = input(prompt).strip()
         return value if value else default
-    except (EOFError, KeyboardInterrupt):
+    except:
         print("\nInstallation cancelled.")
         sys.exit(1)
 
 def get_default_paths():
-    system = platform.system()
-    if system == "Windows":
-        agent_default = os.path.expanduser("~/.config/kilo/agents")
-        skill_default = os.path.expanduser("~/.kilo/skills")
+    home = str(Path.home())
+    if platform.system() == "Windows":
+        return (os.path.join(home, ".config", "kilo", "agents"),
+                os.path.join(home, ".kilo", "skills"))
     else:
-        agent_default = os.path.expanduser("~/.config/kilo/agents")
-        skill_default = os.path.expanduser("~/.kilo/skills")
-    return agent_default, skill_default
+        return (os.path.join(home, ".config", "kilo", "agents"),
+                os.path.join(home, ".kilo", "skills"))
 
 def save_paths(agent_path, skill_path):
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -54,48 +44,54 @@ def install_files(agent_path, skill_path):
     print("\nInstalling Tastar Agent...")
     agent_file = Path(agent_path) / "tastar.md"
     agent_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(agent_file, "w", encoding="utf-8") as f:
-        f.write(AGENT_CONTENT)
+    agent_file.write_text(AGENT_CONTENT, encoding="utf-8")
     print(f"[OK] Agent installed to: {agent_file}")
 
     print("Installing Tastar Skill...")
     skill_dir = Path(skill_path) / "tastar"
     skill_dir.mkdir(parents=True, exist_ok=True)
     skill_file = skill_dir / "SKILL.md"
-    with open(skill_file, "w", encoding="utf-8") as f:
-        f.write(SKILL_CONTENT)
+    skill_file.write_text(SKILL_CONTENT, encoding="utf-8")
     print(f"[OK] Skill installed to: {skill_file}")
 
     save_paths(str(agent_path), str(skill_path))
     print("\n[SUCCESS] Tastar installed successfully!")
 
 def add_to_system_path(executable_path):
-    """Add the directory containing the executable to the system PATH."""
     bin_dir = Path(executable_path).parent.resolve()
     system = platform.system()
     if system == "Windows":
         try:
-            # Use setx /M to modify system PATH (requires admin)
+            # Now we have admin rights (thanks to --uac-admin)
             subprocess.run(
                 f'setx /M PATH "%PATH%;{bin_dir}"',
-                shell=True,
-                check=True,
-                capture_output=True,
+                shell=True, check=True, capture_output=True
             )
             print(f"[OK] Added {bin_dir} to system PATH. Please restart your terminal.")
-        except subprocess.CalledProcessError:
-            print("[ERROR] Could not add to system PATH. Please run the installer as Administrator.")
+        except subprocess.CalledProcessError as e:
+            print(f"[ERROR] Could not add to system PATH: {e.stderr.decode().strip()}")
+            print("Please run the installer as Administrator.")
+    elif system == "Darwin" or system == "Linux":
+        # Try to add to /etc/paths (system-wide) using sudo, fallback to user profile
+        try:
+            subprocess.run(
+                f'echo "{bin_dir}" | sudo tee -a /etc/paths',
+                shell=True, check=True, capture_output=True
+            )
+            print(f"[OK] Added {bin_dir} to system PATH via /etc/paths.")
+        except:
+            # Fallback to user's shell profile
+            shell_rc = os.path.expanduser("~/.profile")
+            if system == "Darwin":
+                shell_rc = os.path.expanduser("~/.zshrc")
+            if not os.path.exists(shell_rc):
+                shell_rc = os.path.expanduser("~/.bashrc")
+            with open(shell_rc, "a") as f:
+                f.write(f'\nexport PATH="$PATH:{bin_dir}"\n')
+            print(f"[OK] Added {bin_dir} to PATH in {shell_rc}.")
+            print("Please restart your terminal or run 'source ~/.profile'.")
     else:
-        # Unix: add to /etc/paths or ~/.profile
-        shell_rc = os.path.expanduser("~/.profile")
-        if system == "Darwin":
-            shell_rc = os.path.expanduser("~/.zshrc")
-        if not os.path.exists(shell_rc):
-            shell_rc = os.path.expanduser("~/.bashrc")
-        with open(shell_rc, "a") as f:
-            f.write(f'\nexport PATH="$PATH:{bin_dir}"\n')
-        print(f"[OK] Added {bin_dir} to PATH in {shell_rc}.")
-        print("Please restart your terminal or run 'source ~/.profile'.")
+        print("Unsupported OS for PATH addition.")
 
 def main_install():
     print_header()
@@ -128,24 +124,16 @@ def main_install():
     print("\nAdditional CLI commands:")
     print("  tastar delete          - Remove installed files")
     print("  tastar delete --self   - Also remove this executable")
-    print("  tastar update          - Self-update")
+    print("  tastar update          - Self-update (coming soon)")
 
 def main():
     if len(sys.argv) > 1:
         cmd = sys.argv[1].lower()
-        if cmd == "update":
-            # Placeholder - we'll implement later
-            print("Update feature not yet implemented.")
-            return
-        elif cmd == "delete":
-            # Implement delete logic (similar to previous)
-            print("Delete feature not yet implemented.")
-            return
-        elif cmd in ("--help", "-h", "help"):
+        if cmd in ("--help", "-h", "help"):
             print("Tastar Installer and CLI")
             print("Usage: tastar [command]")
             print("Commands:")
-            print("  update          Self-update")
+            print("  update          Self-update (coming soon)")
             print("  delete          Remove installed files")
             print("  delete --self   Also remove executable")
             print("  version         Show version")

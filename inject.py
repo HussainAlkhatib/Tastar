@@ -1,23 +1,35 @@
 #!/usr/bin/env python3
 """
-Injects agent and skill content into installer.py.
+Inject agent and skill content into installer.py
 """
 import pathlib
 
 def main():
-    agent = pathlib.Path('md/tastar.md').read_text(encoding='utf-8')
-    skill = pathlib.Path('md/tastar/SKILL.md').read_text(encoding='utf-8')
-    installer = pathlib.Path('installer.py').read_text(encoding='utf-8')
+    agent_path = pathlib.Path('md/tastar.md')
+    skill_path = pathlib.Path('md/tastar/SKILL.md')
+    installer_path = pathlib.Path('installer.py')
 
-    # Escape backslashes and double quotes for safe embedding in Python string
-    agent_escaped = agent.replace('\\', '\\\\').replace('"', '\\"')
-    skill_escaped = skill.replace('\\', '\\\\').replace('"', '\\"')
+    if not agent_path.exists():
+        print(f"Error: {agent_path} not found")
+        return 1
+    if not skill_path.exists():
+        print(f"Error: {skill_path} not found")
+        return 1
 
+    agent_content = agent_path.read_text(encoding='utf-8')
+    skill_content = skill_path.read_text(encoding='utf-8')
+
+    # Escape backslashes and quotes for embedding in Python string
+    agent_escaped = agent_content.replace('\\', '\\\\').replace('"', '\\"')
+    skill_escaped = skill_content.replace('\\', '\\\\').replace('"', '\\"')
+
+    installer = installer_path.read_text(encoding='utf-8')
     installer = installer.replace('{{AGENT_CONTENT}}', agent_escaped)
     installer = installer.replace('{{SKILL_CONTENT}}', skill_escaped)
+    installer_path.write_text(installer, encoding='utf-8')
 
-    pathlib.Path('installer.py').write_text(installer, encoding='utf-8')
     print("Injection successful.")
+    return 0
 
 if __name__ == "__main__":
-    main()
+    exit(main())

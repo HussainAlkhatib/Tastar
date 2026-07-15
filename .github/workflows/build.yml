@@ -7,11 +7,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # Required to upload to releases
+  contents: write
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
@@ -21,7 +22,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          cache: 'pip'   # Speeds up dependency installation
 
       - name: Inject agent and skill content
         run: python inject.py
@@ -32,14 +32,44 @@ jobs:
       - name: Build executable
         run: python build.py
 
-      - name: Upload artifacts to release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload artifact (for later release)
+        uses: actions/upload-artifact@v4
         with:
-          files: |
-            dist/win/tastar-installer.exe
-            dist/mac/tastar-installer
-            dist/lin/tastar-installer
+          name: tastar-${{ runner.os }}
+          path: dist/*/
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Organize files for release
+        run: |
+          mkdir -p release_files
+          # Windows
+          if [ -d "artifacts/tastar-Windows/win" ]; then
+            cp artifacts/tastar-Windows/win/tastar-installer.exe release_files/tastar-installer-windows.exe
+          fi
+          # macOS
+          if [ -d "artifacts/tastar-macOS/mac" ]; then
+            cp artifacts/tastar-macOS/mac/tastar-installer release_files/tastar-installer-macos
+          fi
+          # Linux
+          if [ -d "artifacts/tastar-Linux/lin" ]; then
+            cp artifacts/tastar-Linux/lin/tastar-installer release_files/tastar-installer-linux
+          fi
+          ls -la release_files
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release_files/*
           overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

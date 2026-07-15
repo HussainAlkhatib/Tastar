@@ -26,8 +26,11 @@ jobs:
           agent = pathlib.Path('md/tastar.md').read_text(encoding='utf-8')
           skill = pathlib.Path('md/tastar/SKILL.md').read_text(encoding='utf-8')
           installer = pathlib.Path('installer.py').read_text(encoding='utf-8')
-          installer = installer.replace('{{AGENT_CONTENT}}', agent.replace('\\', '\\\\').replace('\"', '\\\"'))
-          installer = installer.replace('{{SKILL_CONTENT}}', skill.replace('\\', '\\\\').replace('\"', '\\\"'))
+          # Escape backslashes and quotes for safe embedding
+          agent_escaped = agent.replace('\\', '\\\\').replace('\"', '\\\"')
+          skill_escaped = skill.replace('\\', '\\\\').replace('\"', '\\\"')
+          installer = installer.replace('{{AGENT_CONTENT}}', agent_escaped)
+          installer = installer.replace('{{SKILL_CONTENT}}', skill_escaped)
           pathlib.Path('installer.py').write_text(installer, encoding='utf-8')
           "
         shell: bash
